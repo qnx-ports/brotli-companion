@@ -1,0 +1,51 @@
+pkgname=brotli
+pkgver=1.1.0
+pkgrel=0
+pkgdesc="Brotli compression format"
+arch="all"
+license="MIT"
+url="https://github.com/google/brotli"
+makedepends="cmake ninja"
+depends=""
+subpackages="${pkgname}-static ${pkgname}-dev"
+source="${pkgname}-${pkgver}.tar.gz::https://github.com/google/brotli/archive/refs/tags/v${pkgver}.tar.gz"
+
+build() {
+    mkdir build
+    cmake_shared_args="-DCMAKE_INSTALL_PREFIX=/usr \
+                    -DCMAKE_STAGING_PREFIX=/usr \
+                    -DCMAKE_BUILD_TYPE=Release \
+                    "
+
+    if [[ $CBUILD = $CHOST ]]; then
+        # Compile natively
+        cmake_etc_args=""
+    else
+        # Cross compiling
+        cmake_etc_args="-DCMAKE_TOOLCHAIN_FILE=${CBUILDROOT}/usr/share/qnx/qnx_toolchain.cmake"
+    fi
+
+    cmake_args="${cmake_etc_args} \
+                ${cmake_shared_args} \
+                -DBUILD_SHARED_LIBS=OFF \
+                "
+    BUILD_ROOT=${CBUILDROOT} \
+    cmake ${cmake_args} -G Ninja -B ./build/static
+    ninja -C build/static
+
+    cmake_args="${cmake_etc_args} \
+                ${cmake_shared_args} \
+                -DBUILD_SHARED_LIBS=ON \
+                "
+    BUILD_ROOT=${CBUILDROOT} \
+    cmake ${cmake_args} -G Ninja -B ./build/shared
+    ninja -C build/shared
+}
+
+package() {
+    DESTDIR=${pkgdir} ninja -C build/static install
+    DESTDIR=${pkgdir} ninja -C build/shared install
+}
+sha512sums="
+6eb280d10d8e1b43d22d00fa535435923c22ce8448709419d676ff47d4a644102ea04f488fc65a179c6c09fee12380992e9335bad8dfebd5d1f20908d10849d9  brotli-1.1.0.tar.gz
+"
